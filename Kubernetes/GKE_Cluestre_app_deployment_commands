@@ -1,0 +1,278 @@
+# try-gke
+
+Launch a Kubernetes cluster on Google Kubernetes Engine, run a containerized web
+application, and then roll out a new version of the application across the
+cluster.
+
+## Setup
+
+1. You will need a Google Cloud Platform account with an active billing account.
+   If you don't have one, you can sign up for a free trial to get $300 worth of
+   GCP credits, which are valid for 12 months, at
+   <a href="https://cloud.google.com/free/" target="_blank">https://cloud.google.com/free/</a>.
+
+2. This tutorial requires the `kubectl` and `gcloud` command-line tools.
+   <a href="https://console.cloud.google.com/cloudshell" target="_blank">Cloud Shell</a>
+   provides an environment with these tools preinstalled.
+
+For each step below, run the command in a terminal window.
+
+## Step 1: Create a GCP project called "gke-demo".
+
+Enter "Y" to use the recommended project id.
+
+```gcloud projects create --name=gke-demo```
+
+o/p>>
+---------------------------------------------------------------
+No project id provided.
+
+Use [gke-demo-283714] as project id (Y/n)?  y
+
+Create in progress for [https://cloudresourcemanager.googleapis.com/v1/projects/gke-demo-283714].
+Waiting for [operations/cp.6890791115186695182] to finish...done.                                                                               
+Enabling service [cloudapis.googleapis.com] on project [gke-demo-283714]...
+Operation "operations/acf.a1d8ccce-6430-4c2e-982e-3696438c6138" finished successfully.
+---------------------------------------------------------------
+
+
+## Step 2: Set the project as the default for this session.
+
+Replace `[PROJECT-ID]` with the id returned in Step 1.
+
+```gcloud config set project [PROJECT-ID]``` OR ``` export PROJECT-ID=$("gcloud config get-value project -q")```
+
+o/p>>
+---------------------------------------------------------------
+Updated property [core/project].
+---------------------------------------------------------------
+
+## Step 3: Get your billing account ID.
+
+Make a note of the billing account ID in the format XXXXXX-XXXXXX-XXXXXX. If you
+see 0 items listed, you can sign up for the
+<a href="https://cloud.google.com/free/" target="_blank">Free Trial</a>
+to get $300 worth of GCP credits, which are valid for 12 months.
+
+```gcloud alpha billing accounts list```
+
+o/p>>
+---------------------------------------------------------------
+ACCOUNT_ID            NAME                OPEN  MASTER_ACCOUNT_ID
+01B031-624980-0E1E82  My Billing Account  True
+---------------------------------------------------------------
+
+## Step 4: Enable billing for your project.
+
+Replace `[ACCOUNT-ID]` with the id from step 3.
+
+```gcloud beta billing projects link [PROJECT-ID] --billing-account=[ACCOUNT-ID]```
+
+o/p>>
+---------------------------------------------------------------
+billingAccountName: billingAccounts/01B031-624980-0E1E82
+billingEnabled: true
+name: projects/gke-demo-283714/billingInfo
+projectId: gke-demo-283714
+
+---------------------------------------------------------------
+
+## Step 5: Enable APIs for your project.
+
+This tutorial requires both the Compute Engine API and Kubernetes Engine API.
+This may take a couple of minutes to complete.
+
+```
+gcloud services enable compute.googleapis.com; gcloud services enable container.googleapis.com
+```
+o/p>>
+--------------------------------------------------------------
+
+Operation "operations/acf.f6eb0408-d840-4aef-ba47-938db3661f8e" finished successfully.
+Operation "operations/acf.166393ee-0caa-4e8d-92e6-47c89e202745" finished successfully.
+
+---------------------------------------------------------------
+
+
+## Step 6: Create a cluster named "demo-1" in GCP zone us-central1-b.
+
+Creating the cluster may take a few minutes.
+
+```
+gcloud container clusters create demo-1 -z us-central1-b
+```
+
+o/p>>
+---------------------------------------------------------------
+WARNING: Currently VPC-native is not the default mode during cluster creation. In the future, this will become the default mode and can be disabled using `--no-enable-ip-alias` flag. Use `--[no-]enable-ip-alias` flag to suppress this warning.
+WARNING: Newly created clusters and node-pools will have node auto-upgrade enabled by default. This can be disabled using the `--no-enable-autoupgrade` flag.
+WARNING: Starting with version 1.18, clusters will have shielded GKE nodes by default.
+WARNING: Your Pod address range (`--cluster-ipv4-cidr`) can accommodate at most 1008 node(s). 
+This will enable the autorepair feature for nodes. Please see https://cloud.google.com/kubernetes-engine/docs/node-auto-repair for more information on node autorepairs.
+Creating cluster demo-1 in us-central1-b... Cluster is being health-checked (master is healthy)...done.                                         
+Created [https://container.googleapis.com/v1/projects/gke-demo-283714/zones/us-central1-b/clusters/demo-1].
+To inspect the contents of your cluster, go to: https://console.cloud.google.com/kubernetes/workload_/gcloud/us-central1-b/demo-1?project=gke-demo-283714
+kubeconfig entry generated for demo-1.
+NAME    LOCATION       MASTER_VERSION  MASTER_IP     MACHINE_TYPE   NODE_VERSION    NUM_NODES  STATUS
+demo-1  us-central1-b  1.14.10-gke.36  34.68.146.54  n1-standard-1  1.14.10-gke.36  3          RUNNING
+
+---------------------------------------------------------------
+## Step 7: Deploy a web application from a container image.
+
+A sample container image, `gcr.io/google-samples/hello-app:1.0`, is stored in
+Google Container Registry.
+
+```
+kubectl run web-app --image gcr.io/google-samples/hello-app:1.0 --port 8080
+```
+
+o/p>>
+---------------------------------------------------------------
+pod/web-app created
+---------------------------------------------------------------
+
+## Step 8: View the pods that were created.
+
+Re-run this command at any time to view the current pod state.
+
+```
+kubectl get pods
+```
+
+o/p>>
+---------------------------------------------------------------
+AME      READY   STATUS    RESTARTS   AGE
+web-app   1/1     Running   0          11m
+---------------------------------------------------------------
+
+## Step 9: Scale the deployment across three replicas to add redundancy.
+
+```
+kubectl scale deployment web-app --replicas 3; kubectl get pods
+```
+
+o/p>>
+---------------------------------------------------------------
+Error from server (NotFound): deployments.extensions "web-app" not found
+
+
+---------------------------------------------------------------
+
+## Step 10: As the eerror came we ned to check deployments 
+
+```
+kubectl get deployment
+```
+
+o/p>>
+---------------------------------------------------------------
+NAME      READY   UP-TO-DATE   AVAILABLE   AGE
+nginx-1   1/1     1            1           20m
+
+---------------------------------------------------------------
+
+
+## Step 10: Create an external load balancer Service for the web application.
+
+```
+kubectl expose deployment web-app --port=80 --target-port=8080 --type=LoadBalancer
+```
+
+o/p>>
+---------------------------------------------------------------
+service/webb-app exposed
+---------------------------------------------------------------
+## Step 11: Retrieve information about the web-app service.
+
+Make a note of the external IP address that is returned. If the external IP
+address is pending, wait a few moments and then re-run the command.
+
+```
+kubectl get service web-app
+```
+
+o/p>>
+---------------------------------------------------------------
+
+---------------------------------------------------------------
+
+## Step 12: Make a request to the application.
+
+Replace `[IP-ADDRESS]` with the external IP address returned in the previous step.
+
+```
+curl http://[IP-ADDRESS]
+```
+
+## Step 13: Deploy a new version of the web application from Google Container Registry.
+
+```
+kubectl set image deployment web-app web-app=gcr.io/google-samples/hello-app:2.0; watch kubectl get pods
+```
+
+o/p>>
+---------------------------------------------------------------
+---------------------------------------------------------------
+## Step 14: Watch the changes roll out.
+
+Kubernetes will terminate the old pods and re-launch them with the new version.
+Appending the `watch` command to **Step 13** ensures that the watch window has
+time to open before the deployment completes.
+
+When the changes are complete, click Ctrl+C to return to the main terminal.
+
+## Step 15: Confirm the new version (v2.0.0) has been deployed.
+
+```
+curl http://[IP-ADDRESS]
+```
+
+o/p>>
+---------------------------------------------------------------
+---------------------------------------------------------------
+## Step 16: Delete the Deployment and Service.
+
+This prevents further charges from accruing to your GCP account.
+
+```
+kubectl delete services,deployment web-app
+```
+
+o/p>>
+---------------------------------------------------------------
+---------------------------------------------------------------
+Wait about 30 seconds for the Load Balancer to finish deleting in the
+background, then move to the next step.
+
+## Step 17: Delete the cluster.
+
+This deletes the cluster and its nodes hosted on Compute Engine.
+
+ ```
+ gcloud container clusters delete demo-1 --zone us-central1-b
+ ```
+
+o/p>>
+---------------------------------------------------------------
+---------------------------------------------------------------
+## Step 18: Delete the project you created.
+
+Replace `[PROJECT-ID]` with the id returned in Step 1. This prevents further
+charges from accruing to your GCP account.
+
+```
+gcloud projects delete [PROJECT-ID]
+```
+
+o/p>>
+---------------------------------------------------------------
+---------------------------------------------------------------
+--------------------
+FURTHER EXPLORATION:
+
+ * [Google Kubernetes Engine (GKE)](https://cloud.google.com/kubernetes-engine/)
+ * [GKE tutorials](https://cloud.google.com/kubernetes-engine/docs/tutorials)
+ * [Kubernetes comic](https://cloud.google.com/kubernetes-engine/kubernetes-comic/)
+ * [Kubernetes documentation](https://kubernetes.io/docs/)
+ * [kubectl command syntax](https://kubernetes.io/docs/user-guide/kubectl-overview/)
+--------------------
