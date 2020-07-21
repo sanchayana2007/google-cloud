@@ -1,0 +1,60 @@
+##set the project and Zone  before starting commands 
+'''gsutil mb gs://dmcloud-test
+
+
+#copy objects to teh project
+'''gsutil cp TirthMusale.png gs://dmcloud-test/.
+
+
+# Display object size usage
+'''gsutil du  gs://dmcloud-test
+
+
+#Display Metadata
+
+'''gsutil ls -L -b gs://dmcloud-test
+
+#Display all bucketsa
+
+'''gsutil ls  gs://
+
+
+#set storage class for the bucket 
+'''gsutil defstorageclass set nearline gs://dmcloud-test
+
+#removeteh bucket and t file only 
+
+'''gsutil rm  gs://dmcloud-test   - delete the bucket 
+
+'''gsutil rm gs://dmcloud-test/**  - delete only files. 
+
+
+#get teh Current version
+
+
+'''gsutil versioning get gs://[BUCKET_NAME] 
+
+
+#Set teh Current version
+
+'''gsutil versioning set on gs://[BUCKET_NAME]
+
+
+#get teh Current version
+
+'''gsutil versioning get gs://[BUCKET_NAME] 
+
+
+
+#get teh Current version
+'''gsutil ls -a gs://[Bucket Name]
+
+
+
+#Delete particular version
+
+'''gsutil rm gs://[BUCKET_NAME]/[OBJECT_NAME]#[GENERATION_NUMBER]
+
+
+
+
